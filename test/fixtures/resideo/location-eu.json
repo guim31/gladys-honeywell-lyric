@@ -1,0 +1,36 @@
+{
+  "locationID": 123456,
+  "name": "Home",
+  "streetAddress": "1 Example Street",
+  "city": "London",
+  "state": "",
+  "country": "GB",
+  "zipcode": "AB12 3AB",
+  "devices": [],
+  "users": [
+    {
+      "userID": 123456,
+      "username": "user@example.com",
+      "firstname": "Jane",
+      "lastname": "Doe",
+      "created": 1554403500,
+      "deleted": -62135596800,
+      "activated": true,
+      "connectedHomeAccountExists": true,
+      "locationRoleMapping": [
+        { "locationID": 123456, "role": "Adult", "locationName": "Home", "status": 1 }
+      ],
+      "isOptOut": "False",
+      "isCurrentUser": true
+    }
+  ],
+  "timeZoneId": "GMTStandardTime",
+  "timeZone": "GMT Standard Time",
+  "ianaTimeZone": "Europe/London",
+  "daylightSavingTimeEnabled": true,
+  "geoFenceEnabled": false,
+  "predictiveAIREnabled": false,
+  "comfortLevel": 0,
+  "geoFenceNotificationEnabled": false,
+  "geoFenceNotificationTypeId": 13
+}

@@ -1,0 +1,46 @@
+{
+  "deviceId": "AABBCC000011",
+  "status": "NoHold",
+  "currentPriority": {
+    "priorityType": "PickARoom",
+    "selectedRooms": [0],
+    "rooms": [
+      {
+        "id": 0,
+        "roomName": "Hallway",
+        "roomAvgTemp": 76,
+        "roomAvgHumidity": 54,
+        "overallMotion": false,
+        "accessories": [
+          {
+            "id": 0,
+            "type": "Thermostat",
+            "excludeTemp": false,
+            "excludeMotion": false,
+            "temperature": 75.828,
+            "status": "Ok",
+            "detectMotion": false
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "roomName": "Office",
+        "roomAvgTemp": 76,
+        "roomAvgHumidity": 52,
+        "overallMotion": true,
+        "accessories": [
+          {
+            "id": 1,
+            "type": "IndoorAirSensor",
+            "excludeTemp": false,
+            "excludeMotion": false,
+            "temperature": 76,
+            "status": "Ok",
+            "detectMotion": true
+          }
+        ]
+      }
+    ]
+  }
+}

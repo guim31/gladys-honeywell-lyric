@@ -1,177 +1,437 @@
 {
   "manifest_version": 1,
   "type": "device",
-  "name": "Demo Devices Template",
+  "name": "Honeywell Home (Lyric)",
   "description": {
-    "en": "Starter template showing sensors, a switch, a dimmable light and a smart plug.",
-    "fr": "Template de démarrage : capteurs, interrupteur, lampe variable et prise connectée."
+    "en": "Honeywell Home / Resideo thermostats (Lyric, T5, T6, T9, T10): modes, setpoints, room sensors.",
+    "fr": "Thermostats Honeywell Home / Resideo (Lyric, T5, T6, T9, T10) : modes, consignes, capteurs.",
+    "de": "Thermostate von Honeywell Home / Resideo (Lyric, T5, T6, T9, T10): Modi, Sollwerte, Sensoren.",
+    "es": "Termostatos Honeywell Home / Resideo (Lyric, T5, T6, T9, T10): modos, consignas, sensores."
   },
   "version": "1.0.0",
-  "docker_image": "ghcr.io/gladysassistant/integration-template-js:1.0.0",
+  "docker_image": "ghcr.io/guim31/gladys-honeywell-lyric:1.0.0",
   "gladys_version": ">=5.1.0",
-  "cover_image": "https://raw.githubusercontent.com/GladysAssistant/integration-template-js/master/cover.png",
-  "categories": ["lighting", "security", "environment"],
-  "transports": ["local", "cloud"],
+  "cover_image": "https://raw.githubusercontent.com/guim31/gladys-honeywell-lyric/main/cover.png",
+  "categories": ["climate"],
+  "transports": ["cloud"],
   "config_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "Getting started", "fr": "Pour commencer" },
+      "label": {
+        "en": "Your Resideo developer app",
+        "fr": "Votre application développeur Resideo",
+        "de": "Deine Resideo-Entwickler-App",
+        "es": "Su aplicación de desarrollador de Resideo"
+      },
       "description": {
-        "en": "The demo weather station reads real data from the free Open-Meteo API: pick the coordinates to observe. No account, no API key.",
-        "fr": "La station météo de démonstration lit de vraies données via l'API gratuite Open-Meteo : choisissez les coordonnées à observer. Pas de compte, pas de clé d'API."
+        "en": "Resideo gives access to its API through a free developer app of your own. On the Resideo developer site, sign up, open My Apps, Create New App, and paste the Consumer Key and Consumer Secret below. Callback URL of the app: https://my.gladysassistant.com/redirect/oauth (see the documentation).",
+        "fr": "Resideo ouvre son API par une application développeur gratuite, à votre nom. Sur le site développeur de Resideo, créez un compte, ouvrez My Apps, Create New App, puis collez ci-dessous la Consumer Key et le Consumer Secret. URL de rappel de l'application : https://my.gladysassistant.com/redirect/oauth (voir la documentation).",
+        "de": "Resideo öffnet seine API über eine kostenlose, eigene Entwickler-App. Registriere dich auf der Resideo-Entwicklerseite, öffne My Apps, Create New App und füge unten den Consumer Key und das Consumer Secret ein. Callback-URL der App: https://my.gladysassistant.com/redirect/oauth (siehe Dokumentation).",
+        "es": "Resideo da acceso a su API mediante una aplicación de desarrollador gratuita a su nombre. En el sitio para desarrolladores de Resideo, cree una cuenta, abra My Apps, Create New App y pegue abajo la Consumer Key y el Consumer Secret. URL de retorno de la aplicación: https://my.gladysassistant.com/redirect/oauth (vea la documentación)."
       },
       "links": [
         {
-          "url": "https://open-meteo.com/en/docs",
-          "label": { "en": "Open-Meteo documentation", "fr": "Documentation Open-Meteo" }
+          "url": "https://developer.honeywellhome.com/",
+          "label": {
+            "en": "Resideo developer site",
+            "fr": "Site développeur Resideo",
+            "de": "Resideo-Entwicklerseite",
+            "es": "Sitio para desarrolladores de Resideo"
+          }
         }
       ]
     },
     {
-      "key": "latitude",
-      "type": "number",
-      "label": { "en": "Latitude", "fr": "Latitude" },
-      "description": {
-        "en": "Latitude used for the demo weather sensor.",
-        "fr": "Latitude utilisée par le capteur météo de démonstration."
+      "key": "consumer_key",
+      "type": "string",
+      "label": {
+        "en": "Consumer key",
+        "fr": "Consumer key (clé)",
+        "de": "Consumer Key (Schlüssel)",
+        "es": "Consumer key (clave)"
       },
-      "placeholder": { "en": "e.g. 48.8566", "fr": "ex. 48.8566" },
-      "required": true,
-      "default": 48.8566,
-      "min": -90,
-      "max": 90
+      "description": {
+        "en": "Shown under your app in My Apps on the Resideo developer site.",
+        "fr": "Affichée sous votre application, dans My Apps, sur le site développeur de Resideo.",
+        "de": "Wird unter deiner App in My Apps auf der Resideo-Entwicklerseite angezeigt.",
+        "es": "Se muestra bajo su aplicación, en My Apps, en el sitio para desarrolladores de Resideo."
+      },
+      "required": true
     },
     {
-      "key": "longitude",
-      "type": "number",
-      "label": { "en": "Longitude", "fr": "Longitude" },
-      "description": {
-        "en": "Longitude used for the demo weather sensor.",
-        "fr": "Longitude utilisée par le capteur météo de démonstration."
+      "key": "consumer_secret",
+      "type": "secret",
+      "label": {
+        "en": "Consumer secret",
+        "fr": "Consumer secret (secret)",
+        "de": "Consumer Secret (Geheimnis)",
+        "es": "Consumer secret (secreto)"
       },
-      "placeholder": { "en": "e.g. 2.3522", "fr": "ex. 2.3522" },
-      "required": true,
-      "default": 2.3522,
-      "min": -180,
-      "max": 180
+      "description": {
+        "en": "Shown next to the consumer key. Never share it.",
+        "fr": "Affiché à côté de la clé. Ne le partagez jamais.",
+        "de": "Wird neben dem Schlüssel angezeigt. Teile es niemals.",
+        "es": "Se muestra junto a la clave. No lo comparta nunca."
+      },
+      "required": true
     },
     {
-      "key": "unit",
+      "key": "resideo_account",
+      "type": "oauth2",
+      "label": {
+        "en": "Honeywell Home account",
+        "fr": "Compte Honeywell Home",
+        "de": "Honeywell-Home-Konto",
+        "es": "Cuenta Honeywell Home"
+      },
+      "description": {
+        "en": "Save the key and secret first, then click Connect, sign in to Honeywell Home and tick your thermostats.",
+        "fr": "Enregistrez d'abord la clé et le secret, puis cliquez sur Connecter, connectez-vous à Honeywell Home et cochez vos thermostats.",
+        "de": "Speichere zuerst Schlüssel und Secret, klicke dann auf Verbinden, melde dich bei Honeywell Home an und wähle deine Thermostate aus.",
+        "es": "Guarde primero la clave y el secreto, luego haga clic en Conectar, inicie sesión en Honeywell Home y marque sus termostatos."
+      }
+    },
+    {
+      "key": "manual",
+      "type": "section",
+      "label": {
+        "en": "If Connect does not come back to Gladys",
+        "fr": "Si Connecter ne revient pas sur Gladys",
+        "de": "Falls Verbinden nicht zu Gladys zurückkehrt",
+        "es": "Si Conectar no vuelve a Gladys"
+      },
+      "description": {
+        "en": "Enter here the callback URL of your Resideo app (for example https://localhost/), save, then click Connect. After signing in, copy the whole address shown by the browser and paste it in the action Paste the authorization code, within a few minutes.",
+        "fr": "Saisissez ici l'URL de rappel de votre application Resideo (par exemple https://localhost/), enregistrez, puis cliquez sur Connecter. Après la connexion, copiez toute l'adresse affichée par le navigateur et collez-la dans l'action Coller le code d'autorisation, dans les minutes qui suivent.",
+        "de": "Trag hier die Callback-URL deiner Resideo-App ein (zum Beispiel https://localhost/), speichere und klicke auf Verbinden. Kopiere nach der Anmeldung die ganze Adresse aus dem Browser und füge sie innerhalb weniger Minuten in die Aktion Autorisierungscode einfügen ein.",
+        "es": "Indique aquí la URL de retorno de su aplicación de Resideo (por ejemplo https://localhost/), guarde y haga clic en Conectar. Tras iniciar sesión, copie la dirección completa que muestra el navegador y péguela en la acción Pegar el código de autorización en los minutos siguientes."
+      }
+    },
+    {
+      "key": "callback_url",
+      "type": "string",
+      "label": {
+        "en": "Callback URL (pasted code)",
+        "fr": "URL de rappel (code collé)",
+        "de": "Callback-URL (eingefügter Code)",
+        "es": "URL de retorno (código pegado)"
+      },
+      "description": {
+        "en": "Leave empty to use the Connect button alone.",
+        "fr": "Laissez vide pour utiliser le seul bouton Connecter.",
+        "de": "Leer lassen, um nur die Schaltfläche Verbinden zu verwenden.",
+        "es": "Déjelo vacío para usar solo el botón Conectar."
+      },
+      "placeholder": {
+        "en": "e.g. https://localhost/",
+        "fr": "ex. https://localhost/",
+        "de": "z. B. https://localhost/",
+        "es": "p. ej. https://localhost/"
+      },
+      "required": false,
+      "default": ""
+    },
+    {
+      "key": "language",
       "type": "select",
-      "label": { "en": "Temperature unit", "fr": "Unité de température" },
-      "required": false,
-      "default": "celsius",
-      "options": [
-        { "value": "celsius", "label": { "en": "Celsius", "fr": "Celsius" } },
-        { "value": "fahrenheit", "label": { "en": "Fahrenheit", "fr": "Fahrenheit" } }
-      ]
-    },
-    {
-      "key": "poll_frequency",
-      "type": "number",
-      "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
+      "label": {
+        "en": "Language of the feature names",
+        "fr": "Langue des noms de fonctionnalités",
+        "de": "Sprache der Funktionsnamen",
+        "es": "Idioma de los nombres de funciones"
+      },
       "description": {
-        "en": "How often sensors are polled, in seconds (one minute minimum).",
-        "fr": "Fréquence d'interrogation des capteurs, en secondes (une minute minimum)."
+        "en": "Names given to the features when the devices are added, and language of the messages.",
+        "fr": "Noms donnés aux fonctionnalités à l'ajout des appareils, et langue des messages.",
+        "de": "Namen der Funktionen beim Hinzufügen der Geräte und Sprache der Meldungen.",
+        "es": "Nombres de las funciones al añadir los dispositivos e idioma de los mensajes."
       },
       "required": false,
-      "default": 300,
-      "min": 60,
-      "max": 3600
+      "default": "fr",
+      "options": [
+        {
+          "value": "en",
+          "label": { "en": "English", "fr": "Anglais", "de": "Englisch", "es": "Inglés" }
+        },
+        {
+          "value": "fr",
+          "label": { "en": "French", "fr": "Français", "de": "Französisch", "es": "Francés" }
+        },
+        {
+          "value": "de",
+          "label": { "en": "German", "fr": "Allemand", "de": "Deutsch", "es": "Alemán" }
+        },
+        {
+          "value": "es",
+          "label": { "en": "Spanish", "fr": "Espagnol", "de": "Spanisch", "es": "Español" }
+        }
+      ]
     }
   ],
   "actions": [
     {
-      "key": "test_weather",
-      "label": { "en": "Test the weather provider", "fr": "Tester le fournisseur météo" },
-      "timeout_seconds": 30
+      "key": "test_connection",
+      "label": {
+        "en": "Test the connection",
+        "fr": "Tester la connexion",
+        "de": "Verbindung testen",
+        "es": "Probar la conexión"
+      },
+      "timeout_seconds": 60
     },
     {
-      "key": "identify",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
+      "key": "paste_code",
+      "label": {
+        "en": "Paste the authorization code",
+        "fr": "Coller le code d'autorisation",
+        "de": "Autorisierungscode einfügen",
+        "es": "Pegar el código de autorización"
+      },
+      "timeout_seconds": 60,
       "fields": [
         {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
+          "key": "code",
+          "type": "string",
+          "label": {
+            "en": "Code, or the whole address",
+            "fr": "Code, ou l'adresse entière",
+            "de": "Code oder die ganze Adresse",
+            "es": "Código o la dirección completa"
+          },
+          "placeholder": {
+            "en": "https://localhost/?code=…",
+            "fr": "https://localhost/?code=…",
+            "de": "https://localhost/?code=…",
+            "es": "https://localhost/?code=…"
+          }
         }
       ]
     }
   ],
   "scene_triggers": [
     {
-      "key": "motion_detected",
-      "label": { "en": "Motion detected", "fr": "Mouvement détecté" },
+      "key": "thermostat_offline",
+      "label": {
+        "en": "Thermostat offline",
+        "fr": "Thermostat hors ligne",
+        "de": "Thermostat offline",
+        "es": "Termostato sin conexión"
+      },
       "description": {
-        "en": "A demo motion sensor saw a person or an animal move.",
-        "fr": "Un détecteur de démonstration a vu bouger une personne ou un animal."
+        "en": "Resideo no longer reaches a thermostat (Wi-Fi or power cut).",
+        "fr": "Resideo ne joint plus un thermostat (coupure Wi-Fi ou de courant).",
+        "de": "Resideo erreicht ein Thermostat nicht mehr (WLAN- oder Stromausfall).",
+        "es": "Resideo ya no alcanza un termostato (corte de wifi o de corriente)."
       },
       "fields": [
         {
           "key": "device",
           "type": "select",
           "source": "devices",
-          "label": { "en": "Sensor", "fr": "Détecteur" }
-        },
-        {
-          "key": "target",
-          "type": "multi_select",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" },
-          "options": [
-            { "value": "person", "label": { "en": "Person", "fr": "Personne" } },
-            { "value": "animal", "label": { "en": "Animal", "fr": "Animal" } }
-          ]
+          "label": {
+            "en": "Thermostat",
+            "fr": "Thermostat",
+            "de": "Thermostat",
+            "es": "Termostato"
+          }
         }
       ],
       "variables": [
         {
-          "key": "target",
+          "key": "name",
           "type": "string",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" }
+          "label": {
+            "en": "Thermostat name",
+            "fr": "Nom du thermostat",
+            "de": "Name des Thermostats",
+            "es": "Nombre del termostato"
+          }
         }
       ]
-    }
-  ],
-  "scene_actions": [
+    },
     {
-      "key": "identify_device",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "description": {
-        "en": "Make a device signal itself (the demo light blinks).",
-        "fr": "Fait se signaler un appareil (la lampe de démonstration clignote)."
+      "key": "thermostat_online",
+      "label": {
+        "en": "Thermostat back online",
+        "fr": "Thermostat de nouveau en ligne",
+        "de": "Thermostat wieder online",
+        "es": "Termostato de nuevo en línea"
       },
-      "timeout_seconds": 15,
+      "description": {
+        "en": "A thermostat reported offline is reached again.",
+        "fr": "Un thermostat signalé hors ligne répond de nouveau.",
+        "de": "Ein als offline gemeldetes Thermostat ist wieder erreichbar.",
+        "es": "Un termostato señalado sin conexión vuelve a responder."
+      },
       "fields": [
         {
           "key": "device",
           "type": "select",
           "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
+          "label": {
+            "en": "Thermostat",
+            "fr": "Thermostat",
+            "de": "Thermostat",
+            "es": "Termostato"
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "name",
+          "type": "string",
+          "label": {
+            "en": "Thermostat name",
+            "fr": "Nom du thermostat",
+            "de": "Name des Thermostats",
+            "es": "Nombre del termostato"
+          }
+        }
+      ]
+    },
+    {
+      "key": "authorization_lost",
+      "label": {
+        "en": "Honeywell Home sign-in lost",
+        "fr": "Connexion Honeywell Home perdue",
+        "de": "Honeywell-Home-Anmeldung verloren",
+        "es": "Sesión de Honeywell Home perdida"
+      },
+      "description": {
+        "en": "Resideo refused the sign-in: the thermostats are no longer read until you click Connect again.",
+        "fr": "Resideo a refusé la connexion : les thermostats ne sont plus lus avant un nouveau clic sur Connecter.",
+        "de": "Resideo hat die Anmeldung abgelehnt: Die Thermostate werden erst nach erneutem Verbinden wieder gelesen.",
+        "es": "Resideo ha rechazado el inicio de sesión: los termostatos no se leen hasta volver a hacer clic en Conectar."
+      }
+    }
+  ],
+  "scene_actions": [
+    {
+      "key": "resume_schedule",
+      "label": {
+        "en": "Resume the thermostat schedule",
+        "fr": "Reprendre le programme du thermostat",
+        "de": "Zeitplan des Thermostats fortsetzen",
+        "es": "Reanudar la programación del termostato"
+      },
+      "description": {
+        "en": "Cancels the holds: the thermostats follow their schedule again. Every thermostat when none is chosen.",
+        "fr": "Annule les dérogations : les thermostats suivent de nouveau leur programme. Tous si aucun n'est choisi.",
+        "de": "Hebt das Halten auf: Die Thermostate folgen wieder ihrem Zeitplan. Alle, wenn keines gewählt ist.",
+        "es": "Anula las retenciones: los termostatos vuelven a seguir su programación. Todos si no se elige ninguno."
+      },
+      "timeout_seconds": 60,
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Thermostat (all if empty)",
+            "fr": "Thermostat (tous si vide)",
+            "de": "Thermostat (alle, wenn leer)",
+            "es": "Termostato (todos si está vacío)"
+          }
         }
       ],
       "outputs": [
         {
-          "key": "signalled",
-          "type": "boolean",
-          "label": { "en": "Device signalled", "fr": "Appareil signalé" }
+          "key": "count",
+          "type": "number",
+          "label": {
+            "en": "Thermostats resumed",
+            "fr": "Thermostats repris",
+            "de": "Fortgesetzte Thermostate",
+            "es": "Termostatos reanudados"
+          }
         }
       ]
-    }
-  ],
-  "widgets": [
+    },
     {
-      "key": "demo_status",
-      "label": { "en": "Demo status", "fr": "État de la démo" },
-      "description": {
-        "en": "Live temperature and plug power, plug connection and observed location.",
-        "fr": "Température et puissance en direct, connexion de la prise, position observée."
+      "key": "hold_temperature",
+      "label": {
+        "en": "Hold a thermostat temperature",
+        "fr": "Maintenir une température de thermostat",
+        "de": "Temperatur am Thermostat halten",
+        "es": "Mantener una temperatura del termostato"
       },
-      "icon": "activity",
-      "action_timeout_seconds": 15
+      "description": {
+        "en": "Sets the heating setpoint (the cooling one when cooling) until the next schedule period, or permanently.",
+        "fr": "Règle la consigne de chauffage (de climatisation en mode clim) jusqu'à la prochaine période du programme, ou en permanence.",
+        "de": "Setzt die Solltemperatur Heizen (Kühlen im Kühlmodus) bis zur nächsten Zeitplanperiode oder dauerhaft.",
+        "es": "Ajusta la consigna de calefacción (la de refrigeración al enfriar) hasta el siguiente periodo de la programación, o de forma permanente."
+      },
+      "timeout_seconds": 30,
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Thermostat",
+            "fr": "Thermostat",
+            "de": "Thermostat",
+            "es": "Termostato"
+          },
+          "required": true
+        },
+        {
+          "key": "temperature",
+          "type": "string",
+          "label": {
+            "en": "Temperature, in the thermostat unit",
+            "fr": "Température, dans l'unité du thermostat",
+            "de": "Temperatur, in der Einheit des Thermostats",
+            "es": "Temperatura, en la unidad del termostato"
+          },
+          "placeholder": {
+            "en": "e.g. 19.5",
+            "fr": "ex. 19,5",
+            "de": "z. B. 19,5",
+            "es": "p. ej. 19,5"
+          },
+          "required": true
+        },
+        {
+          "key": "hold",
+          "type": "select",
+          "label": { "en": "Until", "fr": "Jusqu'à", "de": "Bis", "es": "Hasta" },
+          "default": "temporary",
+          "options": [
+            {
+              "value": "temporary",
+              "label": {
+                "en": "The next schedule period",
+                "fr": "La prochaine période du programme",
+                "de": "Zur nächsten Zeitplanperiode",
+                "es": "El siguiente periodo de la programación"
+              }
+            },
+            {
+              "value": "permanent",
+              "label": {
+                "en": "Permanently",
+                "fr": "En permanence",
+                "de": "Dauerhaft",
+                "es": "De forma permanente"
+              }
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "key": "setpoint",
+          "type": "number",
+          "label": {
+            "en": "Setpoint applied",
+            "fr": "Consigne appliquée",
+            "de": "Angewendete Solltemperatur",
+            "es": "Consigna aplicada"
+          }
+        }
+      ]
     }
   ]
 }

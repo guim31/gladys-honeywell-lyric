@@ -1,93 +1,114 @@
+// -----------------------------------------------------------------------------
+// Scene actions (src/scenes.js), run like the Gladys scene engine does: with
+// the resolved fields, the declared outputs back.
+// -----------------------------------------------------------------------------
+
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import { createFakeGladys } from '@gladysassistant/integration-sdk/testing';
-import { DEVICE_BLUEPRINTS } from '../src/devices/index.js';
-import { MOTION_DETECTED_TRIGGER, motionSensor } from '../src/devices/motionSensor.js';
-import { SCENE_ACTIONS } from '../src/scenes.js';
-import { normalizeConfig } from '../src/config.js';
+import { parseTemperature } from '../src/hub.js';
+import { ROUND, T6, T9, createWorld, deviceId, featureId } from './helpers/world.js';
 
-const manifest = JSON.parse(
-  await readFile(new URL('../gladys-assistant-integration.json', import.meta.url), 'utf8'),
-);
-const config = normalizeConfig();
+async function world(t) {
+  const w = await createWorld();
+  t.after(() => w.app.stop());
+  return w;
+}
 
-const declarationOf = (list, key) => manifest[list].find((entry) => entry.key === key);
-const keysOf = (list) => (list ?? []).map((entry) => entry.key);
-const deviceIdOf = (gladys, key) =>
-  DEVICE_BLUEPRINTS.find((bp) => bp.key === key).deviceExternalId(gladys);
-
-// Let the async interval callback run to completion.
-const flush = () => new Promise((resolve) => setImmediate(resolve));
-
-test('the motion sensor fires one motion_detected event per detection, none on the clear', async (t) => {
-  t.mock.timers.enable({ apis: ['setInterval', 'setTimeout'] });
-  const gladys = createFakeGladys();
-  const stopPush = motionSensor.startPush(gladys, config);
-  try {
-    t.mock.timers.tick(60_000);
-    await flush();
-    assert.equal(gladys.fake.sceneEvents.length, 1, 'one detection, one event');
-    assert.equal(gladys.fake.sceneEvents[0].key, MOTION_DETECTED_TRIGGER);
-    assert.equal(gladys.fake.states.at(-1).state, 1, 'the state is still published');
-
-    t.mock.timers.tick(10_000);
-    await flush();
-    assert.equal(gladys.fake.states.at(-1).state, 0, 'the detection is cleared');
-    assert.equal(gladys.fake.sceneEvents.length, 1, 'the clear fires no event');
-  } finally {
-    stopPush();
-  }
-});
-
-test('motion_detected data only carries keys the trigger declares', async (t) => {
-  t.mock.timers.enable({ apis: ['setInterval', 'setTimeout'] });
-  const gladys = createFakeGladys();
-  const stopPush = motionSensor.startPush(gladys, config);
-  try {
-    t.mock.timers.tick(60_000);
-    await flush();
-  } finally {
-    stopPush();
-  }
-  const [{ data }] = gladys.fake.sceneEvents;
-  const trigger = declarationOf('scene_triggers', MOTION_DETECTED_TRIGGER);
-  // The core keeps the `fields` keys (filters) and the `variables` keys
-  // (exposed to the scene): any other key would be silently dropped.
-  const declared = [...keysOf(trigger.fields), ...keysOf(trigger.variables)];
-  for (const [key, value] of Object.entries(data)) {
-    assert.ok(declared.includes(key), `data.${key} is not declared, the core would drop it`);
-    assert.ok(value === null || typeof value !== 'object', `data.${key} must be a primitive`);
-  }
-  // A `"source": "devices"` filter stores a device external_id.
-  assert.equal(data.device, deviceIdOf(gladys, 'motion-sensor'));
-  const targets = trigger.fields.find((field) => field.key === 'target').options;
-  assert.ok(
-    targets.some((option) => option.value === data.target),
-    `data.target "${data.target}" must be one of the filter options`,
+test('resume the schedule of every thermostat that has one', async (t) => {
+  const w = await world(t);
+  const ack = await w.fake.sceneAction('resume_schedule', {});
+  assert.equal(ack.success, true, ack.error);
+  assert.deepEqual(
+    ack.data.outputs,
+    { count: 2 },
+    'the T6 and the T9; the Round has no schedule hold',
   );
+  assert.deepEqual(
+    w.resideo.writes.map((write) => [write.deviceId, write.body.thermostatSetpointStatus]),
+    [
+      ['LCC-00A01AB1ABCD', 'NoHold'],
+      ['LCC-1f2e3d4c-5b6a-4f11-8a9b-0c1d2e3f4a5b', 'NoHold'],
+    ],
+  );
+  assert.equal(w.fake.lastState(featureId(w.gladys, 'hold', T9)), 'schedule');
 });
 
-test('identify_device signals the chosen device and returns the declared outputs', async () => {
-  const gladys = createFakeGladys();
-  const outputs = await SCENE_ACTIONS.identify_device(gladys, {
-    fields: { device: deviceIdOf(gladys, 'light') },
-    config,
-  });
-  assert.deepEqual(outputs, { signalled: true });
-  const declared = keysOf(declarationOf('scene_actions', 'identify_device').outputs);
-  for (const key of Object.keys(outputs)) {
-    assert.ok(declared.includes(key), `output "${key}" is not declared, the core would drop it`);
-  }
+test('resume the schedule of one thermostat', async (t) => {
+  const w = await world(t);
+  const ack = await w.fake.sceneAction('resume_schedule', { device: deviceId(w.gladys, T9) });
+  assert.deepEqual(ack.data.outputs, { count: 1 });
+  assert.equal(w.resideo.writes.length, 1);
+  const round = await w.fake.sceneAction('resume_schedule', { device: deviceId(w.gladys, ROUND) });
+  assert.deepEqual(round.data.outputs, { count: 0 });
 });
 
-test('identify_device reports a device that cannot signal itself through its output', async () => {
-  // Not a failure: a scene action is never a condition, the scene author
-  // gates the following actions on the output instead.
-  const gladys = createFakeGladys();
-  const outputs = await SCENE_ACTIONS.identify_device(gladys, {
-    fields: { device: deviceIdOf(gladys, 'weather-station') },
-    config,
+test('hold a temperature permanently, typed with a comma', async (t) => {
+  const w = await world(t);
+  const ack = await w.fake.sceneAction('hold_temperature', {
+    device: deviceId(w.gladys, T6),
+    temperature: '19,3',
+    hold: 'permanent',
   });
-  assert.deepEqual(outputs, { signalled: false });
+  assert.equal(ack.success, true, ack.error);
+  assert.deepEqual(ack.data.outputs, { setpoint: 19.5 });
+  const { body } = w.resideo.writes.at(-1);
+  assert.equal(body.heatSetpoint, 19.5);
+  assert.equal(body.thermostatSetpointStatus, 'PermanentHold');
+  assert.equal(w.fake.lastState(featureId(w.gladys, 'hold')), 'permanent');
+});
+
+test('hold a temperature: until the next period by default', async (t) => {
+  const w = await world(t);
+  const ack = await w.fake.sceneAction('hold_temperature', {
+    device: deviceId(w.gladys, T6),
+    temperature: 18,
+  });
+  assert.equal(ack.success, true, ack.error);
+  assert.equal(w.resideo.writes.at(-1).body.thermostatSetpointStatus, 'TemporaryHold');
+});
+
+test('hold a temperature: the cooling setpoint when the thermostat cools', async (t) => {
+  const w = await world(t);
+  const t9 = w.resideo.locations[1].devices[0];
+  t9.changeableValues.mode = 'Cool';
+  await w.hub.refresh();
+  const ack = await w.fake.sceneAction('hold_temperature', {
+    device: deviceId(w.gladys, T9),
+    temperature: '74',
+  });
+  assert.equal(ack.success, true, ack.error);
+  assert.equal(w.resideo.writes.at(-1).body.coolSetpoint, 74);
+});
+
+test('hold a temperature: refusals say why', async (t) => {
+  const w = await world(t);
+  const noDevice = await w.fake.sceneAction('hold_temperature', { temperature: '19' });
+  assert.equal(noDevice.success, false);
+  assert.match(noDevice.error, /Choose a thermostat/);
+  const garbage = await w.fake.sceneAction('hold_temperature', {
+    device: deviceId(w.gladys, T6),
+    temperature: 'warm',
+  });
+  assert.match(garbage.error, /not understood/);
+  const off = await w.fake.sceneAction('hold_temperature', {
+    device: deviceId(w.gladys, ROUND),
+    temperature: '70',
+  });
+  assert.match(off.error, /off/);
+  const unknown = await w.fake.sceneAction('hold_temperature', {
+    device: 'ext:test-integration:thermostat:FFFFFFFFFFFF',
+    temperature: '19',
+  });
+  assert.match(unknown.error, /Unknown thermostat/);
+  assert.equal(w.resideo.writes.length, 0);
+});
+
+test('a temperature typed in a scene', () => {
+  assert.equal(parseTemperature('19,5'), 19.5);
+  assert.equal(parseTemperature(' 20 '), 20);
+  assert.equal(parseTemperature(21), 21);
+  assert.equal(parseTemperature(''), null);
+  assert.equal(parseTemperature('abc'), null);
+  assert.equal(parseTemperature(Number.NaN), null);
+  assert.equal(parseTemperature(undefined), null);
 });

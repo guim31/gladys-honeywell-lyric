@@ -1,0 +1,37 @@
+{
+  "vacationHold": { "Enabled": false },
+  "scheduleStatus": "Resume",
+  "settings": {
+    "fan": { "allowedModes": ["On", "Auto", "Circulate"], "changeableValues": { "mode": "Auto" } },
+    "devicePairingEnabled": true
+  },
+  "deviceClass": "Thermostat",
+  "deviceType": "Thermostat",
+  "deviceID": "LCC-1f2e3d4c-5b6a-4f11-8a9b-0c1d2e3f4a5b",
+  "userDefinedDeviceName": "Living room",
+  "name": "Living room",
+  "isAlive": true,
+  "macID": "AABBCC000011",
+  "units": "Fahrenheit",
+  "indoorTemperature": 72,
+  "indoorHumidity": 45,
+  "outdoorTemperature": 50,
+  "displayedOutdoorHumidity": 60,
+  "allowedModes": ["Heat", "Off", "Cool", "Auto"],
+  "deadband": 3,
+  "hasDualSetpointStatus": false,
+  "minHeatSetpoint": 40,
+  "maxHeatSetpoint": 90,
+  "minCoolSetpoint": 50,
+  "maxCoolSetpoint": 99,
+  "changeableValues": {
+    "mode": "Auto",
+    "autoChangeoverActive": true,
+    "heatSetpoint": 68,
+    "coolSetpoint": 76,
+    "thermostatSetpointStatus": "PermanentHold",
+    "heatCoolMode": "Cool"
+  },
+  "operationStatus": { "mode": "Cool", "fanRequest": true, "circulationFanRequest": false },
+  "deviceModel": "T9-T10"
+}

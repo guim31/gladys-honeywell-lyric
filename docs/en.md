@@ -1,61 +1,180 @@
-# Demo Devices Template
+# Honeywell Home (Lyric)
 
-This is the user documentation of the integration. Gladys re-hosts this file
-and shows a permanent **Documentation** link to it in the Configuration screen
-(in the user's language, with English as the fallback) — it is when
-configuring that the user needs it most. Keep the short onboarding hints in
-the `section` blocks of the manifest `config_schema`; put the long
-step-by-step (screenshots, troubleshooting…) here.
+This integration brings your **Honeywell Home / Resideo** Wi-Fi thermostats into Gladys: Lyric
+Round, T5, T6, T9 and T10, and their T9/T10 room sensors. It goes through the official
+Resideo cloud API, with a free developer app you create yourself, like the Home Assistant
+`lyric` integration. You get the temperature, the humidity, the setpoints, the mode, what the
+equipment does and the schedule of each thermostat, and you control them from the dashboard
+and from scenes.
 
-## What you get
+It is not for the older Honeywell **Total Connect Comfort** thermostats (another API), nor for
+the evohome systems.
 
-Six demo devices show up after installation: a weather station (real data
-from Open-Meteo), a switch, a dimmable light, a smart plug with power
-metering, a motion sensor and a camera.
+This integration is not affiliated with Resideo or Honeywell. Developed without the hardware:
+feedback welcome on [GitHub](https://github.com/guim31/gladys-honeywell-lyric/issues).
 
-## Configuration
+## What you need
 
-1. Open the **Configuration** tab of the integration.
-2. Set the **latitude** and **longitude** the demo weather station should
-   observe (they default to Paris), and pick your temperature unit.
-   The **refresh interval** sets how often the weather station and the
-   plug's power are read: every 5 minutes by default, every minute at most.
-3. Save: the devices appear in the **Discovery** tab, ready to be added.
+- Gladys 5.1 or later, with Internet access.
+- A thermostat already working in the **Resideo** (Honeywell Home) app.
+- A free account on the [Resideo developer site](https://developer.honeywellhome.com/), to
+  create your own app: Resideo gives no shared key to third-party software.
 
-The **Prefer the local connection** toggle drives the demo plug: it reports
-the channel it actually uses as a badge (local or cloud), with an orange dot
-when it runs degraded (local refused, cloud fallback).
+## Set up
 
-## Actions
+### 1. Create your Resideo developer app
 
-- **Test the weather provider** — performs a live request to Open-Meteo and
-  shows the current temperature and humidity under the button.
-- **Identify a device** — pick one of your devices in the list and it will
-  signal itself (the demo light "blinks" in the logs).
+1. On [developer.honeywellhome.com](https://developer.honeywellhome.com/), sign up (any e-mail
+   address), then sign in.
+2. Open **My Apps**, then **Create New App**.
+3. **App Name**: anything, e.g. `Gladys`.
+4. **Callback URL**: `https://my.gladysassistant.com/redirect/oauth` (the HTTPS page Gladys
+   uses to bring you back to your own Gladys after signing in).
+5. Save. Open your app in **My Apps**: it shows a **Consumer Key** and a **Consumer Secret**. A
+   new app may stay "pending" for a while before Resideo accepts it.
 
-## Scenes
+### 2. Enter the key and the secret
 
-The integration adds its own cards to the scene editor (Gladys 5.1 or
-later), under the **Integrations** category:
+In Gladys, open **Integrations → Honeywell Home (Lyric) → Configuration**, paste the
+**Consumer key** and the **Consumer secret**, choose the **language of the feature names**,
+then **Save**.
 
-- **Motion detected** (trigger) — starts the scene when a demo motion sensor
-  sees something move. Optionally pick the sensor and what moved (person,
-  animal); left empty, any detection matches. The following actions can
-  read what moved with `{{triggerEvent.data.target}}`.
-- **Identify a device** (action) — makes the chosen device signal itself.
-  It returns whether the device could signal itself, so the following
-  actions can depend on it.
+### 3. Connect your account
+
+Click **Connect** next to **Honeywell Home account**. Resideo opens its sign-in page: sign in
+with the account of the Resideo app, tick the thermostats Gladys may use, and accept. You come
+back to Gladys, and a few seconds later the status says the integration is connected. The
+thermostats are then in the **Discover** tab: add them.
+
+Under **Connect**, the Configuration screen shows the **redirect URI to declare in your
+developer application**: `https://my.gladysassistant.com/redirect/oauth`. If you reach Gladys
+over HTTPS and tick **Use the address of my instance instead**, it shows the address of your
+instance instead: then enter that one as Callback URL of your Resideo app.
+
+### If Connect does not come back to Gladys
+
+Use the pasted code instead:
+
+1. In your Resideo app, set the **Callback URL** to `https://localhost/`.
+2. In Gladys, enter the same address in **Callback URL (pasted code)**, save, then click
+   **Connect**.
+3. After signing in, the browser shows an error page on `localhost`: that is expected. Copy the
+   whole address from the address bar (it contains `?code=…`).
+4. Within a few minutes (a code is valid only once and for a short time), paste it in the
+   action **Paste the authorization code** of the Configuration screen and run it. The answer
+   is "Connected to Resideo: 2 thermostat(s)." for example.
+
+The tokens are kept under `/data`: you only connect again if Resideo refuses them.
+
+## The device of each thermostat
+
+One device per thermostat, named as in the Resideo app. Its features depend on the model:
+
+| Feature                                                    | What it is                                                                          |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `Temperature`                                              | Temperature measured by the thermostat.                                             |
+| `Humidity`                                                 | Indoor humidity, when the thermostat measures it.                                   |
+| `Outdoor temperature`                                      | Outdoor temperature known by Resideo (weather), when given.                         |
+| `Heating setpoint`                                         | Temperature to reach when heating. You can change it.                               |
+| `Cooling setpoint`                                         | Temperature not to exceed when cooling (air conditioning). You can change it.       |
+| `Mode`                                                     | `Off`, `Heating`, `Cooling` or `Auto`, as the thermostat allows. You can change it. |
+| `Equipment state`                                          | What the heating or cooling does right now: idle, heating, cooling.                 |
+| `Schedule`                                                 | T5, T6, T9, T10: follow the schedule or hold a temperature. You can change it.      |
+| `<room> temperature`, `<room> humidity`, `<room> presence` | T9/T10 room sensors: average of the room, someone detected.                         |
+
+- Temperatures and setpoints are in the unit of the thermostat (°C or °F), within the bounds
+  the thermostat gives. A setpoint is rounded to 0.5 °C or 1 °F.
+- Changing a setpoint while the thermostat follows its schedule makes a **temporary hold**,
+  as on the thermostat itself: the schedule takes over at its next period.
+- The options of `Schedule` are `Follow the schedule`, `Temporary hold`, `Permanent hold`,
+  `Hold until a time` and `Vacation hold`. The last two are shown but set in the Resideo app
+  (they need a time or dates).
+- In `Auto` mode, the heating and cooling setpoints must stay apart by the gap the thermostat
+  requires (its deadband).
+- A Lyric Round has no schedule hold through the API: it has no `Schedule` feature. Turning it
+  from off to `Auto` takes two writes, three seconds apart (a quirk of the Resideo API).
+- An offline thermostat shows the "unreachable" badge; the others show "cloud".
 
 ## Dashboard
 
-Add the **Demo status** widget to a dashboard: it shows the live
-temperature of the weather station and the power of the office plug, the
-connection the plug currently uses (orange when degraded) and the observed
-location. Its **Identify the light** button makes the demo light signal
-itself.
+No dedicated widget: the Gladys widgets already show a thermostat. Add the **Devices** widget
+with the features of your choice: it shows the temperature, the setpoints with their buttons,
+the mode, the schedule and the room sensors. The temperature and humidity features
+also fit the room temperature and humidity widgets and the charts.
+
+## Scenes
+
+The integration adds its own cards to the scene editor, under **Integrations**. The device
+features also work with the usual cards (a temperature above a threshold, set the mode or a
+setpoint).
+
+### Triggers
+
+- **Thermostat offline**: Resideo no longer reaches a thermostat (Wi-Fi or power cut).
+  Filter: the thermostat. Variable: the thermostat name.
+- **Thermostat back online**: a thermostat reported offline answers again. Filter and
+  variable: the same.
+- **Honeywell Home sign-in lost**: Resideo refused the sign-in; the thermostats are no longer
+  read until you click **Connect** again. Fired once.
+
+### Actions
+
+- **Resume the thermostat schedule**: cancels the holds, the thermostat follows its schedule
+  again. Every thermostat when none is chosen. Result: the number of thermostats resumed (a
+  Lyric Round is skipped).
+- **Hold a thermostat temperature**: sets the heating setpoint (the cooling one when the
+  thermostat cools) until the next period of the schedule, or permanently. The temperature is
+  typed in the unit of the thermostat, `19.5` or `19,5`, and can come from a variable. Result:
+  the setpoint applied, rounded and bounded.
+
+### Scene ideas
+
+- When the last person leaves home: **Hold a thermostat temperature** at 16 °C, permanently;
+  when the first one comes back: **Resume the thermostat schedule**.
+- **Thermostat offline**: send a message "{{triggerEvent.data.name}} is offline, check the
+  power and the Wi-Fi".
+- **Honeywell Home sign-in lost**: send a message to reconnect the integration.
+- A window opened for more than 10 minutes: set `Mode` to `Off`; closed again: set it back to
+  `Heating`.
+
+## API quota and refresh
+
+The integration reads Resideo **every 5 minutes**: one request for all your thermostats, plus
+one per T9/T10 for its room sensors. A command adds its write and one reading 15 seconds
+later. Resideo sizes the free quota of a developer app for a reading every 5 minutes of up to
+20 devices, with a little margin for the changes. If Resideo still answers "quota reached",
+the integration waits twice as long (up to 30 minutes), then goes back to 5 minutes. A value
+that does not change is still sent to Gladys every 6 hours. Use one developer app for Gladys
+only.
 
 ## Troubleshooting
 
-The integration logs everything it does: check the integration logs from the
-Gladys UI (or `docker logs` on the host) with `LOG_LEVEL=debug` for the full
-detail.
+- **"Enter the consumer key and secret"**: fill both fields and save.
+- **"Click Connect"**: the account is not connected yet, or the key changed: click
+  **Connect**.
+- **The Resideo page says the redirect URI is invalid**: the Callback URL of your Resideo app
+  must be exactly `https://my.gladysassistant.com/redirect/oauth` (or the address you chose,
+  see above).
+- **"Resideo refused the sign-in"**: the connection was revoked or expired at Resideo. Click
+  **Connect** again. Check that the app is still active in **My Apps**.
+- **"Resideo refused the code"**: a code is valid only once and for a few minutes: click
+  **Connect** again and paste the new address quickly.
+- **"Resideo API quota reached"**: another program uses the same developer app, or the
+  thermostats are many. Wait: the readings slow down on their own.
+- **No room sensor**: only T9 and T10 thermostats share them, and only the rooms with a sensor
+  appear (the room of the thermostat is the thermostat itself). A room added later appears
+  after **Update** in the **Discover** tab.
+- **Test the connection** (Configuration screen) reads Resideo at once and lists each
+  thermostat with its temperature and mode.
+- More detail in the logs with `LOG_LEVEL=debug`; no token or secret is ever written there.
+
+## Limits
+
+- Cloud only: no local control, and nothing works when the Resideo cloud or your Internet
+  access is down.
+- Changes made elsewhere (thermostat, Resideo app) reach Gladys within 5 minutes.
+- Not covered: the fan mode, the vacation hold settings, the schedule itself, the water leak
+  detectors and cameras of Resideo, the Total Connect Comfort and evohome systems.
+- The room sensors give the average of their room. Resideo documents their temperature in
+  °F: for a thermostat in °C, a room value above 45 is taken for °F and converted.
+- Feature names are set when a device is added: a renamed room keeps its old name in Gladys.
