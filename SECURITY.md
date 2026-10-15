@@ -30,6 +30,22 @@ Gladys before reporting a problem.
 
 In scope: the code of this repository and the Docker image it publishes.
 
+What the integration keeps and sends:
+
+- **Configuration** (stored by Gladys): the consumer key and the consumer secret
+  of your Resideo developer app (the secret is a `secret` field, never sent back
+  to the browser), an optional callback URL and the language.
+- **`/data/resideo-tokens.json`** (mode 0600, in the container's only writable
+  volume): the Resideo access and refresh tokens, and a short hash of the
+  consumer key telling which app they belong to. Neither the key nor the secret
+  is written there. Deleting the file only asks you to click "Connect" again.
+- **Network**: HTTPS to `api.honeywellhome.com` only (sign-in, token refresh,
+  thermostat reads and writes). Nothing listens on the network; the sign-in
+  comes back through Gladys.
+- **Logs**: no token, secret, authorization code or URL carrying the key is
+  ever logged.
+
 Out of scope: Gladys Assistant itself (see its
 [security policy](https://github.com/GladysAssistant/Gladys/security/policy)),
-and the third-party services and devices the integration talks to.
+the Resideo cloud and the thermostats, and the Gladys OAuth redirect page
+(`my.gladysassistant.com`).

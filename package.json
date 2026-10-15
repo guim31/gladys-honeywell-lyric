@@ -1,8 +1,8 @@
 {
-  "name": "gladys-integration-template-js",
+  "name": "gladys-honeywell-lyric",
   "version": "1.0.0",
   "private": true,
-  "description": "Official starter template to build an external integration for Gladys Assistant with the JavaScript SDK.",
+  "description": "Gladys Assistant integration for Honeywell Home / Resideo thermostats (Lyric, T5, T6, T9, T10), through the official Resideo API.",
   "type": "module",
   "main": "index.js",
   "scripts": {

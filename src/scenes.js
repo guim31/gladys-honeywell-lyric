@@ -1,41 +1,47 @@
 // -----------------------------------------------------------------------------
-// Scene actions (SDK v0.14+, Gladys 5.1+).
+// Scene action handlers (manifest `scene_actions`), one per key. They receive
+// the RESOLVED fields (scene variables substituted, defaults applied) and
+// return the declared outputs. A thrown error fails that action only.
 //
-// A scene action is an OPERATION a scene author places in a scene, with
-// parameters and a result: "identify this device", "take a snapshot", "clean
-// these rooms". Each one is declared in the manifest `scene_actions` field
-// (key, label, `fields` in the config_schema grammar, scalar `outputs`) and
-// handled here, keyed by that same `key`; index.js registers every entry with
-// `gladys.onSceneAction(key, ...)`.
-//
-// Scene TRIGGERS are the other direction ("this happened"): they are fired by
-// the device that observes the event, see src/devices/motionSensor.js.
-//
-// The rules that matter:
-//   - `fields` arrive RESOLVED: scene variables substituted, defaults applied,
-//     validated by the core; a `"source": "devices"` field is the chosen
-//     device external_id;
-//   - resolve an object of the declared `outputs` (scalars only), readable by
-//     the following actions of the scene, or `undefined` for none. Keys not
-//     declared in the manifest are dropped by the core;
-//   - throwing fails THIS action only: the scene logs it and continues. A
-//     scene action is never a condition: return an output and let the scene
-//     author gate on it;
-//   - never fire a scene event as a consequence of a received action: a scene
-//     bound to that event would loop through the integration.
+// What they add to the standard "control a device" action of Gladys: one
+// action for every thermostat at once (back to the schedule when everyone
+// leaves), and a setpoint held permanently in one write, where the device
+// feature only gives a temporary hold.
 // -----------------------------------------------------------------------------
 
-import { createLogger } from '@gladysassistant/integration-sdk';
-import { signalDevice } from './devices/index.js';
+import { ACTION_TEXT } from './texts.js';
+import { THERMOSTAT_MODE, currentMode, canHeat, isLcc, HOLD } from './resideo/model.js';
 
-const logger = createLogger({ name: 'scenes' });
+export const HOLD_CHOICES = Object.freeze({
+  temporary: HOLD.TEMPORARY,
+  permanent: HOLD.PERMANENT,
+});
 
 export const SCENE_ACTIONS = {
-  // The ack is awaited under the action's `timeout_seconds` (15 s in the
-  // manifest), counted from the moment the scene reaches the action.
-  async identify_device(gladys, { fields, config }) {
-    logger.info(`Scene action identify_device <- ${fields.device}`);
-    const signalled = await signalDevice(gladys, fields.device, config);
-    return { signalled };
+  /** Every thermostat (or one) follows its schedule again. */
+  async resume_schedule(hub, { fields = {} }) {
+    const thermostats = hub.targets(fields.device).filter((thermostat) => isLcc(thermostat.raw));
+    for (const thermostat of thermostats) {
+      await hub.setHold(thermostat, 'schedule');
+    }
+    return { count: thermostats.length };
+  },
+
+  /**
+   * Hold a temperature: the heating setpoint, or the cooling one when the
+   * thermostat is cooling (or cannot heat).
+   */
+  async hold_temperature(hub, { fields = {} }) {
+    if (!fields.device) {
+      throw hub.fail(ACTION_TEXT.chooseThermostat);
+    }
+    const [thermostat] = hub.targets(fields.device);
+    const kind =
+      currentMode(thermostat.raw) === THERMOSTAT_MODE.COOLING || !canHeat(thermostat.raw)
+        ? 'cool'
+        : 'heat';
+    const hold = HOLD_CHOICES[fields.hold] ?? HOLD_CHOICES.temporary;
+    const setpoint = await hub.setSetpoint(thermostat, kind, fields.temperature, hold);
+    return { setpoint };
   },
 };

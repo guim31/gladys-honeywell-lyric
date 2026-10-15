@@ -11,6 +11,10 @@ Gladys through
 [`@gladysassistant/integration-sdk`](https://github.com/GladysAssistant/integration-sdk-js),
 its only runtime dependency. It started from the official JavaScript template.
 
+This one brings the **Honeywell Home / Resideo** thermostats (Lyric Round, T5,
+T6, T9, T10) through the official Resideo cloud API, signed in with the user's
+own developer app (see "Honeywell Home / Resideo" at the end).
+
 ## Commands
 
 ```bash
@@ -31,16 +35,22 @@ pushing.
 ## Architecture
 
 ```
-index.js                          SDK wiring only: handlers registered before connect()
-src/devices/index.js              registry of the device blueprints + dispatch helpers
-src/devices/<type>.js             one device type per file (buildDevice, onPoll, onSetValue...)
+index.js                          SDK wiring only: registerHandlers, shutdown, connect()
+src/app.js                        every SDK handler, registered on the hub (tests use the same wiring)
+src/hub.js                        sign-in, 5-minute reading timer, states, commands, scene events
+src/devices.js                    the Gladys device of a thermostat, its features and their values
+src/resideo/client.js             OAuth2 + v2 API client, token refresh, error kinds
+src/resideo/model.js              what a payload means (modes, holds, rooms) and the write bodies
+src/resideo/http.js               the one network function (fetch), replaced in the tests
+src/store.js                      tokens under /data (atomic, mode 0600)
 src/scenes.js                     scene action handlers (manifest `scene_actions`)
-src/widgets.js                    dashboard widget handlers (manifest `widgets`)
+src/texts.js                      every user-facing text, in en / fr / de / es
 src/config.js                     DEFAULT_CONFIG (mirrors the manifest defaults) + normalization
-src/weather.js                    example driver (Open-Meteo)
-gladys-assistant-integration.json manifest: name, config_schema, actions, image...
-docs/en.md, docs/fr.md            user documentation, re-hosted by Gladys (mandatory)
-test/                             node --test, against the SDK's fake Gladys (integration-sdk/testing)
+scripts/probe.mjs                 real sign-in until refused, for a machine with network access
+gladys-assistant-integration.json manifest: name, config_schema, actions, scenes, image...
+docs/{en,fr,de,es}.md             user documentation, re-hosted by Gladys (same sections)
+test/                             node --test, SDK fake Gladys + in-memory Resideo (test/helpers)
+test/fixtures/resideo/            payloads of aiolyric and Home Assistant, anonymised
 .github/scripts/release.mjs       release helpers (manifest bump, changelog), tested in test/
 ```
 
@@ -70,8 +80,9 @@ test/                             node --test, against the SDK's fake Gladys (in
   `type: "provider"`: 5.1.0). `test/manifest.test.js` ties the manifest to the
   code (defaults, action, scene and widget handlers): change both sides
   together.
-- **User-facing text** is bilingual (English and French): action messages,
-  manifest texts, and `docs/en.md` / `docs/fr.md`, kept in sync.
+- **User-facing text** exists in English, French, German and Spanish: action
+  messages, feature names, manifest texts, and `docs/{en,fr,de,es}.md`, kept in
+  sync (`test/i18n.test.js`).
 - **Style.** Prettier formats, ESLint catches mistakes. Comments explain why,
   in English. Tests never touch the network.
 
@@ -233,3 +244,53 @@ long, et sur un « Sie »/« Ihr… » de politesse en allemand. Le store exige 
 - Docs `en`, `fr`, `de`, `es` avec les mêmes sections.
 - Chauffe, ouverture, sécurité : ne rien rendre pilotable « comme un thermostat » ou par un assistant
   vocal quand une erreur serait dangereuse (leçon d'OctoPrint).
+
+## Honeywell Home / Resideo (ce dépôt)
+
+**API** (lue dans aiolyric et l'intégration `lyric` de Home Assistant, Apache-2.0 tous deux ;
+aiolyric n'est **pas** sous MIT, contrairement à ce que disait la consigne) :
+
+- `https://api.honeywellhome.com`. OAuth2 code d'autorisation : `/oauth2/authorize`
+  (`response_type=code`, `client_id`, `redirect_uri`, `state`, `appSelect=1` pour choisir
+  Resideo plutôt que First Alert), `/oauth2/token` en `x-www-form-urlencoded` avec
+  `Authorization: Basic base64(clé:secret)`. Jeton d'accès d'environ 30 min ; `expires_in` peut
+  arriver en **chaîne** (réponse Apigee). Un rafraîchissement peut renvoyer, ou non, un nouveau
+  refresh token : garder l'ancien sinon. Home Assistant force un rafraîchissement sur un 401.
+- v2 : `apikey=<clé>` en paramètre de **chaque** appel, le jeton en `Bearer`.
+  `GET /v2/locations` donne tous les lieux avec les appareils complets (une seule requête par
+  relevé). `GET /v2/devices/thermostats/{deviceID}/priority?locationId=` donne les pièces des
+  T9/T10 ; un thermostat sans pièce répond **400 `{ code: "GetPriorityFailed" }`** : ce n'est pas
+  une erreur. Deux schémas existent (`priority`/`name`/`avgTemperature` et
+  `currentPriority`/`roomName`/`roomAvgTemp`, aiolyric#165) : lire les deux.
+  `POST /v2/devices/thermostats/{deviceID}?locationId=` écrit.
+- Identité : `macID` (le `deviceID` des T9 récents est un UUID). LCC (T5/T6/T9/T10) : a
+  `thermostatSetpointStatus`, « Auto » est un mode. TCC (Lyric Round) : pas de statut, l'auto
+  est `autoChangeoverActive` sur Heat/Cool, et passer d'Off à auto exige Heat puis
+  `autoChangeoverActive: true` **3 s plus tard** (sinon retour à Off).
+- Une écriture envoie toutes les valeurs modifiables (copiées du dernier relevé) ; sur un LCC,
+  `NoHold` devient `TemporaryHold` (comportement d'aiolyric). `HoldUntil` exige
+  `nextPeriodTime`. En auto, consignes séparées d'au moins `deadband`.
+- Quota (FAQ du portail) : dimensionné pour un relevé toutes les 5 minutes de 20 appareils au
+  plus, avec une marge pour les commandes. 429 au-delà : intervalle doublé jusqu'à 30 min.
+- Le proxy des sessions de code refuse `api.honeywellhome.com` et `developer.honeywellhome.com` :
+  rien n'a été vérifié en vrai, d'où `scripts/probe.mjs` (statuts seulement).
+
+**Pièges découverts ici** (valables pour toute intégration `oauth2`) :
+
+- **Le bouton « Connecter » n'envoie pas l'adresse de l'instance** : depuis Gladys 4.85 (#2769),
+  le front passe `redirect_uri = https://my.gladysassistant.com/redirect/oauth` (page HTTPS qui
+  renvoie vers l'instance), sauf si l'utilisateur, en HTTPS, coche « Utiliser plutôt l'adresse
+  de mon instance ». La doc doit dire de déclarer **cette** URL chez le fournisseur ; l'écran de
+  configuration l'affiche sous le bouton (`front/src/utils/oauth.js`).
+- Par cette page, le `state` remis au fournisseur est **enveloppé** : base64url de
+  `{ v, origin, path, state }`. Le callback relayé par Gladys rend le `state` d'origine, mais un
+  code **collé** depuis la barre d'adresse porte l'enveloppe : la déballer (`unwrapState`).
+- Le widget « Appareils de la pièce » est **déprécié** en 5.2.1 : renvoyer vers le widget
+  « Appareils » (`devices`).
+- `publishChangedStates` date le heartbeat avec le vrai `Date.now()`, pas l'horloge injectée :
+  un test de heartbeat doit simuler `Date.now`.
+- `step` sur une fonctionnalité (pas de consigne) est accepté depuis Gladys 4.86 ;
+  `text/select` à valeurs texte depuis 5.0 ; `supported_options` filtre les modes d'un
+  `thermostat/mode` dans le front.
+- Hypothèse non vérifiée : les températures de pièce du point `priority` sont en °F (seuls
+  exemples publiés) ; pour un thermostat en °C, une valeur > 45 est convertie.

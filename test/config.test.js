@@ -1,33 +1,48 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeConfig, DEFAULT_CONFIG } from '../src/config.js';
+import {
+  DEFAULT_CONFIG,
+  hasCredentials,
+  normalizeConfig,
+  parseCallbackUrl,
+} from '../src/config.js';
 
-test('normalizeConfig returns the defaults when called with no argument', () => {
-  assert.deepEqual(normalizeConfig(), DEFAULT_CONFIG);
+test('defaults: no credentials, French names', () => {
+  const config = normalizeConfig();
+  assert.deepEqual(config, {
+    consumerKey: '',
+    consumerSecret: '',
+    callbackUrl: null,
+    callbackUrlInvalid: false,
+    language: 'fr',
+  });
+  assert.equal(hasCredentials(config), false);
+  assert.equal(normalizeConfig(DEFAULT_CONFIG).language, 'fr');
 });
 
-test('normalizeConfig keeps user values over the defaults', () => {
-  const config = normalizeConfig({ latitude: 45.5, longitude: -73.6, unit: 'fahrenheit' });
-  assert.equal(config.latitude, 45.5);
-  assert.equal(config.longitude, -73.6);
-  assert.equal(config.unit, 'fahrenheit');
+test('blanks around the pasted key and secret are dropped', () => {
+  const config = normalizeConfig({
+    consumer_key: ' key \n',
+    consumer_secret: '\tsecret ',
+    language: 'es',
+  });
+  assert.equal(config.consumerKey, 'key');
+  assert.equal(config.consumerSecret, 'secret');
+  assert.equal(config.language, 'es');
+  assert.equal(hasCredentials(config), true);
 });
 
-test('normalizeConfig coerces numeric strings coming from a form', () => {
-  const config = normalizeConfig({ latitude: '48.8', longitude: '2.3', poll_frequency: '600' });
-  assert.equal(config.latitude, 48.8);
-  assert.equal(config.longitude, 2.3);
-  assert.equal(config.poll_frequency, 600);
-  assert.equal(typeof config.poll_frequency, 'number');
+test('an unknown language falls back to French', () => {
+  assert.equal(normalizeConfig({ language: 'it' }).language, 'fr');
 });
 
-test('normalizeConfig falls back to the default for a missing numeric field', () => {
-  const config = normalizeConfig({ unit: 'celsius' });
-  assert.equal(config.poll_frequency, DEFAULT_CONFIG.poll_frequency);
-});
-
-test('GLADYS_PREFER_LOCAL defaults to true and only an explicit false disables it', () => {
-  assert.equal(normalizeConfig().GLADYS_PREFER_LOCAL, true);
-  assert.equal(normalizeConfig({ GLADYS_PREFER_LOCAL: true }).GLADYS_PREFER_LOCAL, true);
-  assert.equal(normalizeConfig({ GLADYS_PREFER_LOCAL: false }).GLADYS_PREFER_LOCAL, false);
+test('the callback URL: absolute http(s), no credentials', () => {
+  assert.equal(parseCallbackUrl('https://localhost/'), 'https://localhost/');
+  assert.equal(parseCallbackUrl(' https://localhost '), 'https://localhost/');
+  assert.equal(parseCallbackUrl('localhost'), null);
+  assert.equal(parseCallbackUrl('ftp://localhost/'), null);
+  assert.equal(parseCallbackUrl('https://user:pw@localhost/'), null);
+  assert.equal(parseCallbackUrl(''), null);
+  assert.equal(normalizeConfig({ callback_url: 'nope' }).callbackUrlInvalid, true);
+  assert.equal(normalizeConfig({ callback_url: '' }).callbackUrlInvalid, false);
 });
