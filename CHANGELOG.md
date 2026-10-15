@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-15
+
 ### Added
 
 - Honeywell Home / Resideo thermostats (Lyric Round, T5, T6, T9, T10) through the
@@ -29,4 +31,5 @@ the notes of the version's GitHub Release.
 - Feature names, messages and documentation in English, French, German and
   Spanish.
 
-[Unreleased]: https://github.com/guim31/gladys-honeywell-lyric/commits/main
+[Unreleased]: https://github.com/guim31/gladys-honeywell-lyric/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/guim31/gladys-honeywell-lyric/releases/tag/v1.0.1

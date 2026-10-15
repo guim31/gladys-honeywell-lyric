@@ -1,6 +1,6 @@
 {
   "name": "gladys-honeywell-lyric",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Gladys Assistant integration for Honeywell Home / Resideo thermostats (Lyric, T5, T6, T9, T10), through the official Resideo API.",
   "type": "module",
