@@ -393,9 +393,12 @@ export class LyricHub {
     this.lastReadAt = this.now();
     this.backoff = 1;
     this.authLostFired = false;
-    if (this.error) {
+    const wasSignedOut = [ERROR_KINDS.NOT_CONFIGURED, ERROR_KINDS.NOT_CONNECTED].includes(
+      this.error?.kind,
+    );
+    if (this.error && !wasSignedOut) {
       logger.info(`Resideo cloud: connection restored (${next.size} thermostat(s))`);
-    } else if (!this.readOnce) {
+    } else if (!this.readOnce || wasSignedOut) {
       logger.info(`Resideo cloud: connected (${next.size} thermostat(s))`);
     }
     this.error = null;
